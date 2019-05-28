@@ -1,4 +1,6 @@
-# RDPY [![Build Status](https://travis-ci.org/citronneur/rdpy.svg?branch=dev)](https://travis-ci.org/citronneur/rdpy) [![PyPI version](https://badge.fury.io/py/rdpy.png)](http://badge.fury.io/py/rdpy)
+* This is just an experimental fork of rdpy
+
+# RDPY
 
 Remote Desktop Protocol in twisted python.
 
