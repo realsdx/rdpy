@@ -291,6 +291,7 @@ class Server(X224Layer):
         
     def sendConnectionConfirm(self):
         """
+        @mark
         @summary:  Write connection confirm message
                     Start TLS connection
                     Next state is recvData

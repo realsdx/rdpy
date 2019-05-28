@@ -30,6 +30,7 @@ from rdpy.core.error import InvalidExpectedDataException
 from rdpy.core import log
 from rdpy.security import rc4
 import rdpy.security.rsa_wrapper as rsa
+from rdpy.protocol.rdp.x224 import Protocols
 
 class SecurityFlag(object):
     """
@@ -313,6 +314,7 @@ class ClientSecurityExchangePDU(CompositeType):
         self.padding = String("\x00" * 8, readLen = CallableValue(8))
         
 class RDPInfo(CompositeType):
+    ## MARKD
     """
     @summary: Client informations
     Contains credentials (very important packet)
@@ -654,8 +656,21 @@ class Server(SecLayer):
     def connect(self):
         """
         @summary: init automata to wait info packet
+        @sec: Unless its RDP security , there is no encryption in this layer
+        @issue: ncrack dosen't send any serverSelectedproto Uless a Nego Request is Made
+        ? : Why encryption is determined by client info?
         """
-        self._enableEncryption = self.getGCCClientSettings().CS_CORE.serverSelectedProtocol == 0
+        log.debug("CS_CORE>SELEC_PROTO:" +
+                  repr(self.getGCCClientSettings().CS_CORE.serverSelectedProtocol))
+
+        # self._enableEncryption = self.getGCCClientSettings().CS_CORE.serverSelectedProtocol == 0
+
+        _serverSelectedProtocol = self.getGCCClientSettings().CS_CORE.serverSelectedProtocol
+        # check as some client may not follow everything
+        if _serverSelectedProtocol > 0x00000008:
+            _serverSelectedProtocol = 0
+        
+        self._enableEncryption = _serverSelectedProtocol == 0
         if self._enableEncryption:
             self.setNextState(self.recvClientRandom)
         else:
@@ -681,6 +696,7 @@ class Server(SecLayer):
         securityFlagHi = UInt16Le()
         s.readType((securityFlag, securityFlagHi))
         
+        log.debug("SEC_CLIENT_RANDOM:"+str((securityFlag.value, SecurityFlag.SEC_EXCHANGE_PKT)))
         if not (securityFlag.value & SecurityFlag.SEC_EXCHANGE_PKT):
             raise InvalidExpectedDataException("waiting client random")
         
@@ -712,12 +728,16 @@ class Server(SecLayer):
         securityFlagHi = UInt16Le()
         s.readType((securityFlag, securityFlagHi))
         
+        log.debug("SEC_FLAG_INFO:"+str((securityFlag.value, SecurityFlag.SEC_INFO_PKT)))
         if not (securityFlag.value & SecurityFlag.SEC_INFO_PKT):
             raise InvalidExpectedDataException("Waiting info packet")
         
         if securityFlag.value & SecurityFlag.SEC_ENCRYPT:
             s = self.readEncryptedPayload(s, securityFlag.value & SecurityFlag.SEC_SECURE_CHECKSUM)
         
+        _stream_data = s.getvalue()
+        log.debug("S_DATA:"+(_stream_data))
+
         s.readType(self._info)
         #next state send error license
         self.sendLicensingErrorMessage()

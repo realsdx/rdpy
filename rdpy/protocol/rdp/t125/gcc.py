@@ -29,6 +29,7 @@ from rdpy.core.error import InvalidExpectedDataException
 from rdpy.core import log
 from rdpy.security import x509
 import rdpy.security.rsa_wrapper as rsa
+import pprint
 
 t124_02_98_oid = ( 0, 0, 20, 124, 0, 1 )
 
@@ -222,7 +223,7 @@ class DataBlock(CompositeType):
             """
             @summary: build settings in accordance of type self.type.value
             """
-            for c in [ClientCoreData, ClientSecurityData, ClientNetworkData, ServerCoreData, ServerNetworkData, ServerSecurityData]:
+            for c in [ClientCoreData, ClientSecurityData, ClientNetworkData, ClientClusterData, ServerCoreData, ServerNetworkData, ServerSecurityData]:
                 if self.type.value == c._TYPE_:
                     return c(readLen = self.length - 4)
             log.debug("unknown GCC block type : %s"%hex(self.type.value))
@@ -267,7 +268,15 @@ class ClientCoreData(CompositeType):
         self.connectionType = UInt8(optional = True)
         self.pad1octet = UInt8(optional = True)
         self.serverSelectedProtocol = UInt32Le(optional = True)
-    
+
+class ClientClusterData(CompositeType):
+    _TYPE_ = MessageType.CS_CLUSTER
+
+    def __init__(self, readLen = None):
+        CompositeType.__init__(self, readLen = readLen)
+        self.flags = UInt32Le()
+        self.redirectedSessionID = UInt32Le()
+
 class ServerCoreData(CompositeType):
     """
     @summary: Server side core settings structure
@@ -279,7 +288,7 @@ class ServerCoreData(CompositeType):
         CompositeType.__init__(self, readLen = readLen)
         self.rdpVersion = UInt32Le(Version.RDP_VERSION_5_PLUS)
         self.clientRequestedProtocol = UInt32Le(optional = True)
-        self.earlyCapabilityFlags = UInt32Le(optional = True)
+        # self.earlyCapabilityFlags = UInt32Le(optional = True)
         
 class ClientSecurityData(CompositeType):
     """
@@ -333,6 +342,9 @@ class ServerCertificate(CompositeType):
             raise InvalidExpectedDataException("Try to send an invalid Certificate")
           
         self.certData = certData
+        # log.debug("CERT_DATA:")
+        # print repr(self.certData)
+        # log.debug("  ")
         
 class ProprietaryServerCertificate(CompositeType):
     """
@@ -389,9 +401,10 @@ class ProprietaryServerCertificate(CompositeType):
         @see: http://msdn.microsoft.com/en-us/library/cc240778.aspx
         """
         self.SignatureBlob.value = rsa.sign(self.computeSignatureHash()[::-1], rsa.PrivateKey(d = ProprietaryServerCertificate._TERMINAL_SERVICES_PRIVATE_EXPONENT_[::-1], n = ProprietaryServerCertificate._TERMINAL_SERVICES_MODULUS_[::-1]))[::-1]
-        
+
     def verify(self):
         """
+        @CL_ONLY
         @summary: verify certificate signature
         """
         return rsa.verify(self.SignatureBlob.value[::-1], rsa.PublicKey(e = ProprietaryServerCertificate._TERMINAL_SERVICES_PUBLIC_EXPONENT_[::-1], n = ProprietaryServerCertificate._TERMINAL_SERVICES_MODULUS_[::-1]))[::-1] == self.computeSignatureHash()
@@ -449,9 +462,22 @@ class RSAPublicKey(CompositeType):
         self.pubExp = UInt32Le()
         self.modulus = String(readLen = CallableValue(lambda:(self.keylen.value - 8)))
         self.padding = String("\x00" * 8, readLen = CallableValue(8))
+    
+    # def __repr__(self):
+    #     data = {
+    #     'magic': repr(self.magic.value),
+    #     'keylen': repr(self.keylen.value),
+    #     'bitlen': repr(self.bitlen.value),
+    #     'datalen': repr(self.datalen.value),
+    #     'pubExp': repr(self.pubExp.value),
+    #     'modulus': repr(self.modulus.value),
+    #     'padding': repr(self.padding.value)
+    #     }
+    #     return str(data)
 
 class ChannelDef(CompositeType):
     """
+    @NOT_REQ
     Channels structure share between client and server
     @see: http://msdn.microsoft.com/en-us/library/cc240513.aspx
     """
@@ -461,6 +487,7 @@ class ChannelDef(CompositeType):
         self.name = String(name[0:8] + "\x00" * (8 - len(name)), readLen = CallableValue(8))
         #unknown
         self.options = UInt32Le()
+        log.debug("I AM USED ** %s" % (self.__class__))
         
 class ClientNetworkData(CompositeType):
     """
@@ -522,14 +549,16 @@ def clientSettings():
     @summary: Build settings for client
     @return: Settings
     """
-    return Settings([ClientCoreData(), ClientNetworkData(), ClientSecurityData()])
+    return Settings([ClientCoreData(), ClientClusterData(), ClientNetworkData(), ClientSecurityData()])
 
 def serverSettings():
     """
     @summary: Build settings for server
     @return Settings
     """
-    return Settings([ServerCoreData(), ServerSecurityData(), ServerNetworkData()])
+    # Maybe worng sequence
+    # return Settings([ServerCoreData(), ServerSecurityData(), ServerNetworkData()])
+    return Settings([ServerCoreData(),ServerNetworkData(), ServerSecurityData()])
         
 def readConferenceCreateRequest(s):
     """
@@ -602,12 +631,13 @@ def writeConferenceCreateResponse(serverData):
     @summary: Write a conference create response packet
     @param serverData: Settings for server
     @return: gcc packet
+    @change: writeLength() from `len(serverDataStream.getvalue()) + 14)` to `42`
     """
     serverDataStream = Stream()
     serverDataStream.writeType(serverData)
-    
+    # log.debug("LENOF:"+str(len(serverDataStream.getvalue()) + 14))
     return (per.writeChoice(0), per.writeObjectIdentifier(t124_02_98_oid),
-            per.writeLength(len(serverDataStream.getvalue()) + 14), per.writeChoice(0x14),
+            per.writeLength(42), per.writeChoice(0x14),
             per.writeInteger16(0x79F3, 1001), per.writeInteger(1), per.writeEnumerates(0),
             per.writeNumberOfSet(1), per.writeChoice(0xc0),
             per.writeOctetStream(h221_sc_key, 4), per.writeOctetStream(serverDataStream.getvalue()))

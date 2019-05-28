@@ -102,6 +102,7 @@ class PDULayer(LayerAutomata, tpkt.IFastPathListener):
             caps.CapsType.CAPSTYPE_BITMAP : caps.Capability(caps.BitmapCapability()),
             caps.CapsType.CAPSTYPE_ORDER : caps.Capability(caps.OrderCapability()),
             caps.CapsType.CAPSTYPE_BITMAPCACHE : caps.Capability(caps.BitmapCacheCapability()),
+            caps.CapsType.CAPSTYPE_BITMAPCACHE_REV2 : caps.Capability(caps.BitmapCacheRev2Capability()),
             caps.CapsType.CAPSTYPE_POINTER : caps.Capability(caps.PointerCapability()),
             caps.CapsType.CAPSTYPE_INPUT : caps.Capability(caps.InputCapability()),
             caps.CapsType.CAPSTYPE_BRUSH : caps.Capability(caps.BrushCapability()),
@@ -419,16 +420,16 @@ class Server(PDULayer):
         """
         pdu = data.PDU()
         s.readType(pdu)
-        
         if pdu.shareControlHeader.pduType.value != data.PDUType.PDUTYPE_CONFIRMACTIVEPDU:
             #not a blocking error because in deactive reactive sequence 
             #input can be send too but ignored
-            log.debug("Ignore message type %s during connection sequence"%hex(pdu.shareControlHeader.pduType.value))
+            log.debug("[%s]Ignore message type %s during connection sequence"%(self.__class__,hex(pdu.shareControlHeader.pduType.value)))
             return
         
         for cap in pdu.pduMessage.capabilitySets._array:
             self._clientCapabilities[cap.capabilitySetType] = cap
-            
+
+        log.debug("XREF: "+repr(pdu.pduMessage.capabilitySets))
         #find use full flag
         self._clientFastPathSupported = bool(self._clientCapabilities[caps.CapsType.CAPSTYPE_GENERAL].capability.extraFlags.value & caps.GeneralExtraFlag.FASTPATH_OUTPUT_SUPPORTED)
         

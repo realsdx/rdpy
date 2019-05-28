@@ -140,6 +140,9 @@ def readInteger(s):
         result = UInt16Be()
     elif size == 4:
         result = UInt32Be()
+    # This is worng, but its for NCRACK to work
+    elif size == 0:
+        result = UInt8()
     else:
         raise InvalidValue("invalid integer size %d"%size)
     s.readType(result)

@@ -203,6 +203,9 @@ class SimpleType(Type, CallableValue):
         self._structFormat = structFormat
         Type.__init__(self, conditional = conditional, optional = optional, constant = constant)
         CallableValue.__init__(self, value)
+
+    def __repr__(self):
+        return repr(self.value)
         
     def __getValue__(self):
         """
@@ -527,6 +530,13 @@ class CompositeType(Type):
         @return: False if each subtype are equals
         """
         return not self.__eq__(other)
+    
+    def __repr__(self):
+        r_data = {}
+        for name in self._typeName:
+            s = self.__dict__[name]
+            r_data.update({name : repr(s)})
+        return str(r_data)
 
 """
 All simple Raw type use in RDPY
@@ -759,6 +769,12 @@ class String(Type, CallableValue):
         self._readLen = readLen
         self._unicode = unicode
         self._until = until
+
+    def __repr__(self):
+        bytestring = repr(self.value).encode('hex')
+        rpr = " ".join([bytestring[i:i+2] for i in range(0, len(bytestring), 2)])
+        # return rpr
+        return repr(self.value)
         
     def __cmp__(self, other):
         """
@@ -856,6 +872,9 @@ class Stream(StringIO):
     """
     @summary:  Stream use to read all types
     """
+    def __repr__(self):
+        return str(self.__class__)
+    
     def dataLen(self):
         """
         @return: not yet read length
@@ -938,6 +957,9 @@ class ArrayType(Type):
         self._array = []
         if not init is None:
             self._array = init
+
+    def __repr__(self):
+        return repr(self._array)
         
     def __read__(self, s):
         """
@@ -996,6 +1018,9 @@ class FactoryType(Type):
             self._factory = lambda:factory
 
         self._value = None
+
+    def __repr__(self):
+        return str(self.__class__)
     
     def __read__(self, s):
         """

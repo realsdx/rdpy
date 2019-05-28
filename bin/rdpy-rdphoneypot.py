@@ -28,7 +28,7 @@ from rdpy.core import log, error, rss
 from rdpy.protocol.rdp import rdp
 from twisted.internet import reactor
 
-log._LOG_LEVEL = log.Level.INFO
+log._LOG_LEVEL = log.Level.DEBUG
 
 class HoneyPotServer(rdp.RDPServerObserver):
     def __init__(self, controller, rssFileSizeList):

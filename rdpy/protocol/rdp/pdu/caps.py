@@ -230,12 +230,12 @@ class Capability(CompositeType):
         CompositeType.__init__(self)
         self.capabilitySetType = UInt16Le(lambda:capability.__class__._TYPE_)
         self.lengthCapability = UInt16Le(lambda:sizeof(self))
-        
+
         def CapabilityFactory():
             """
             Closure for capability factory
             """
-            for c in [GeneralCapability, BitmapCapability, OrderCapability, BitmapCacheCapability, PointerCapability, InputCapability, BrushCapability, GlyphCapability, OffscreenBitmapCacheCapability, VirtualChannelCapability, SoundCapability, ControlCapability, WindowActivationCapability, FontCapability, ColorCacheCapability, ShareCapability, MultiFragmentUpdate]:
+            for c in [GeneralCapability, BitmapCapability, OrderCapability, BitmapCacheCapability, BitmapCacheRev2Capability, PointerCapability, InputCapability, BrushCapability, GlyphCapability, OffscreenBitmapCacheCapability, VirtualChannelCapability, SoundCapability, ControlCapability, WindowActivationCapability, FontCapability, ColorCacheCapability, ShareCapability, MultiFragmentUpdate]:
                 if self.capabilitySetType.value == c._TYPE_ and (self.lengthCapability.value - 4) > 0:
                     return c(readLen = self.lengthCapability - 4)
             log.debug("unknown Capability type : %s"%hex(self.capabilitySetType.value))
@@ -248,6 +248,9 @@ class Capability(CompositeType):
             raise InvalidExpectedDataException("Try to send an invalid capability block")
             
         self.capability = capability
+
+    def __repr__(self):
+        return str(hex(self.capabilitySetType.value))
 
 class GeneralCapability(CompositeType):
     """
@@ -348,6 +351,23 @@ class BitmapCacheCapability(CompositeType):
         self.cache1MaximumCellSize = UInt16Le()
         self.cache2Entries = UInt16Le()
         self.cache2MaximumCellSize = UInt16Le()
+
+class BitmapCacheRev2Capability(CompositeType):
+    _TYPE_ = CapsType.CAPSTYPE_BITMAPCACHE_REV2
+
+    def __init__(self, readLen = None):
+        CompositeType.__init__(self, readLen = readLen)
+        self.cacheFlags = UInt16Le()
+        self.pad2 = UInt8()
+        self.numCellCaches = UInt8()
+        self.bitmapCache0CellInfo = UInt32Le()
+        self.bitmapCache1CellInfo = UInt32Le()
+        self.bitmapCache2CellInfo = UInt32Le()
+        self.bitmapCache3CellInfo = UInt32Le()
+        self.bitmapCache4CellInfo = UInt32Le()
+        self.pad3_1 = UInt32Le()
+        self.pad3_2 = UInt32Le()
+        self.pad3_3 = UInt32Le()
         
 class PointerCapability(CompositeType):
     """

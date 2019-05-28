@@ -6,4 +6,10 @@ README.md~
 *.os
 dist/*
 build/*
-rdpy.egg-info/*
+rdpy.egg-info/
+rss_*
+outputs/
+bin/private.pem
+Notes
+Pipfile
+.vscode/
